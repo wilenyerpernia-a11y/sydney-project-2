@@ -296,49 +296,8 @@
                     <div style="line-height: 1; white-space: pre; font-size: 14px;"> .---.\n=[_---_]\n -(o)-(o)-</div>
                 </div>`;
 
-            typeWriter("Hola Sydney. ¿Segura que quieres seguir adelante? Acuérdate que una vez cruzas esta línea, no te puedes echar para atrás.", () => {
-                botonesDinamicos.innerHTML = `<button onclick="faseIdentidad()">> Continuar <</button>`;
-                botonesDinamicos.style.display = 'flex';
-            });
-        }
-
-        function faseIdentidad() {
-            limpiarEscena();
-            typeWriter("Verificación de seguridad requerida... ¿Eres tú la chica con la sonrisa más linda de este planeta?", () => {
-                botonesDinamicos.innerHTML = `
-                    <button onclick="faseTonta1()">> Obvio, soy yo <</button>
-                    <button onclick="faseTonta1()">> Ay, no sé <</button>`;
-                botonesDinamicos.style.display = 'flex';
-            });
-        }
-
-        function faseTonta1() {
-            limpiarEscena();
-            typeWriter("Identidad confirmada. Ahora una pregunta seria: Si tuvieras que elegir, ¿qué prefieres...?", () => {
-                botonesDinamicos.innerHTML = `
-                    <button onclick="faseTonta2()">> ¿Damer un abrazo? <</button>
-                    <button onclick="faseTonta2()">> ¿Pegarme? <</button>`;
-                botonesDinamicos.style.display = 'flex';
-            });
-        }
-
-        function faseTonta2() {
-            limpiarEscena();
-            typeWriter("Jaja, lo suponía. Último protocolo: ¿Cuántas veces al día crees que pasas por mi mente?", () => {
-                botonesDinamicos.innerHTML = `
-                    <button onclick="faseEnamorado()">> Unas 100 veces <</button>
-                    <button onclick="faseEnamorado()">> Todo el santo día <</button>`;
-                botonesDinamicos.style.display = 'flex';
-            });
-        }
-
-        function faseEnamorado() {
-            limpiarEscena();
-            typeWriter("Exacto. Con todo esto aclarado... Sabes que lo más probable es que estoy perdidamente enamorado tuyo, ¿verdad?", () => {
-                botonesDinamicos.innerHTML = `
-                    <button onclick="iniciarHistoria('si')">> Sí, lo sé <</button>
-                    <button onclick="iniciarHistoria('no')">> ¿En serio? <</button>`;
-                botonesDinamicos.style.display = 'flex';
+            typeWriter("Hola Sydney. Estás en la segunda vez que te veo por aquí...", () => {
+                setTimeout(() => botonSeguir(() => iniciarHistoria('si'), '> Continuar <'), 2000);
             });
         }
 
@@ -413,19 +372,21 @@
             limpiarEscena();
             typeWriter("Los juegos de niño en la cascada, las risas... Elige un juego y mira quién gana:", () => {
                 const resultados = {
-                    a: "Piedra, papel o tijera: empate técnico. Nadie quiere perder.",
-                    b: "Carrera hasta la cascada: ganó el que menos corrió. Nadie.",
-                    c: "Mortal Kombat: FLAWLESS VICTORY para ti. Curiosamente, es lo único en lo que me ganas."
+                    a: "Balines: puntería empatada. Nadie quiere perder.",
+                    b: "Juegos de carros: cruzamos la meta casi juntos.",
+                    c: "Lanzamiento de pelotas: ganó quien lanzó con más cariño. Tú.",
+                    d: "Mortal Kombat: FLAWLESS VICTORY para ti. Curiosamente, es lo único en lo que me ganas."
                 };
                 botonesDinamicos.innerHTML = `
-                    <button data-j="a">> Piedra, papel o tijera <</button>
-                    <button data-j="b">> Carrera <</button>
-                    <button data-j="c">> Mortal Kombat <</button>`;
+                    <button data-j="a">> Balines <</button>
+                    <button data-j="b">> Juegos de carros <</button>
+                    <button data-j="c">> Lanzamiento de pelotas <</button>
+                    <button data-j="d">> Mortal Kombat <</button>`;
                 botonesDinamicos.style.display = 'flex';
                 botonesDinamicos.querySelectorAll('button').forEach(b => {
                     b.onclick = () => {
                         textoConsola.innerHTML = resultados[b.dataset.j];
-                        if (b.dataset.j === 'c') botonSeguir(sigPaso);
+                        if (b.dataset.j === 'd') botonSeguir(sigPaso);
                     };
                 });
             });
