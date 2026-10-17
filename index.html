@@ -124,11 +124,17 @@
         #galeria img { max-width: 100%; max-height: 30vh; border: 2px solid #4af626; box-shadow: 0 0 10px #4af626; object-fit: contain; }
         #galeria .hint { font-size: 15px; opacity: 0.7; }
         .grid-momentos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; width: 100%; }
-        .grid-momentos img { width: 100%; height: 14vh; object-fit: cover; opacity: 0.55; cursor: pointer; }
-        .grid-momentos img.fav { opacity: 1; border-color: #ff3333; box-shadow: 0 0 10px #ff3333; }
-        #canvas-pixel { display: none; width: 100%; max-width: 420px; image-rendering: pixelated; border: 2px solid #4af626; background: #000; }
+        .moment-card { position: relative; width: 100%; padding: 0; aspect-ratio: 1.1; overflow: hidden; border: 1px solid #4af626; background: #051005; }
+        .moment-card img { display: block; width: 100%; height: 100%; object-fit: cover; opacity: 0.72; cursor: pointer; transition: transform 180ms ease, opacity 180ms ease; }
+        .moment-card:hover img { transform: scale(1.06); opacity: 1; }
+        .moment-card.fav { border: 2px solid #ff5a75; box-shadow: 0 0 14px #ff5a75; }
+        .moment-card span { position: absolute; right: 5px; bottom: 4px; color: white; font: 18px 'VT323', monospace; text-shadow: 0 0 5px #ff334e; }
+        .moment-card.fav span { font-size: 14px; }
+        #canvas-pixel { display: none; width: 100%; max-width: 520px; aspect-ratio: 32 / 15; height: auto; image-rendering: pixelated; border: 2px solid #4af626; background: #000; box-shadow: 0 0 20px rgba(74, 246, 38, 0.28); }
         #controles { display: none; gap: 10px; width: 100%; justify-content: center; }
-        #controles button { width: 40%; user-select: none; touch-action: none; }
+        #controles button { width: 24%; min-height: 44px; user-select: none; touch-action: none; }
+        #controles button[data-salto] { color: #ffc857; border-color: #ffc857; text-shadow: 0 0 6px #ffc857; }
+        .pixel-hint { margin: 0; font-size: 16px; color: #b7ffae; text-shadow: 0 0 6px #4af626; }
 
         /* TEXTOS Y BOTONES - Centrados */
         #texto-consola {
@@ -190,7 +196,9 @@
         <canvas id="canvas-pixel" width="320" height="150"></canvas>
         <div id="controles">
             <button id="btn-izq">◀</button>
+            <button id="btn-salto" data-salto>⤒ SALTAR</button>
             <button id="btn-der">▶</button>
+            <button id="btn-sonido" aria-label="Silenciar efectos">♪</button>
         </div>
 
         <!-- TEXTO Y BOTONES -->
@@ -268,6 +276,7 @@
         }
 
         function arrancarSistema() {
+            sonidoRetro(523, 0.18, 'triangle');
             pantallaInicio.style.display = 'none';
             textoConsola.style.display = 'block';
             textoConsola.innerHTML = "<span class='cursor'>Conectando a servidor seguro...</span>";
@@ -302,7 +311,9 @@
         }
 
         // ================= HISTORIA INTERACTIVA =================
-        const FOTO_CARACAS = 'foto favorita.jpg';
+        const FOTO_CARACAS = 'Caracas.jpeg';
+        const FOTO_FAVORITA = 'foto favorita.jpg';
+        const FOTO_OTRO_MOMENTO = 'Otro momento.jpg';
         const FOTO_OFICINA = 'Oficina.jpg';
         const FOTOS_MOMENTOS = [1, 2, 3, 4, 5].map(n => `Momentos (${n}).jpg`);
         const FOTOS_TELEFONO = ['te quedaste con mi telefono.jpg']
@@ -317,13 +328,42 @@
         let pasoIdx = 0;
         let respuestaHistoria = 'si';
         let rafId = null;
-        const S = { escena: '', x: 20, dir: 0, sentado: false, t: 0, corazones: [] };
+        const S = { escena: '', x: 20, dir: 0, sentado: false, t: 0, corazones: [], y: 0, vy: 0, suelo: true, ultimoPaso: 0 };
+        let sintetizador;
+        let efectosActivos = true;
+
+        function sonidoRetro(frecuencia = 660, duracion = 0.09, forma = 'square') {
+            if (!efectosActivos) return;
+            try {
+                sintetizador ||= new (window.AudioContext || window.webkitAudioContext)();
+                if (sintetizador.state === 'suspended') sintetizador.resume();
+                const oscilador = sintetizador.createOscillator();
+                const volumen = sintetizador.createGain();
+                oscilador.type = forma;
+                oscilador.frequency.setValueAtTime(frecuencia, sintetizador.currentTime);
+                volumen.gain.setValueAtTime(0.045, sintetizador.currentTime);
+                volumen.gain.exponentialRampToValueAtTime(0.001, sintetizador.currentTime + duracion);
+                oscilador.connect(volumen);
+                volumen.connect(sintetizador.destination);
+                oscilador.start();
+                oscilador.stop(sintetizador.currentTime + duracion);
+            } catch (_) {}
+        }
+
+        function descargarMomento(nombre) {
+            const enlace = document.createElement('a');
+            enlace.href = encodeURI(nombre);
+            enlace.download = nombre;
+            document.body.appendChild(enlace);
+            enlace.click();
+            enlace.remove();
+        }
 
         function sigPaso() { pasos[pasoIdx++](); }
 
         function botonSeguir(fn, etiqueta = '> Seguir <') {
             botonesDinamicos.innerHTML = `<button id="btn-seguir">${etiqueta}</button>`;
-            document.getElementById('btn-seguir').onclick = fn;
+            document.getElementById('btn-seguir').onclick = () => { sonidoRetro(880); fn(); };
             botonesDinamicos.style.display = 'flex';
         }
 
@@ -360,12 +400,19 @@
         function pasoMomentos() {
             limpiarEscena();
             galeria.innerHTML = '<div class="grid-momentos">' +
-                FOTOS_MOMENTOS.map(f => `<img src="${encodeURI(f)}" alt="">`).join('') + '</div>';
+                FOTOS_MOMENTOS.map((f, i) => `<button type="button" class="moment-card" aria-label="Elegir momento ${i + 1}"><img src="${encodeURI(f)}" alt="Momento ${i + 1}"><span>♡</span></button>`).join('') + '</div>';
             galeria.style.display = 'flex';
-            galeria.querySelectorAll('img').forEach(img => {
-                img.onclick = () => img.classList.toggle('fav');
+            galeria.querySelectorAll('.moment-card').forEach((card, i) => {
+                card.onclick = () => {
+                    const elegida = card.classList.toggle('fav');
+                    card.querySelector('span').textContent = elegida ? '♥ DESCARGADA' : '♡';
+                    if (elegida) {
+                        sonidoRetro(1040, 0.16, 'triangle');
+                        descargarMomento(FOTOS_MOMENTOS[i]);
+                    }
+                };
             });
-            typeWriter("Estos son nuestros momentos. Toca las fotos que más te gusten de nosotros.", () => botonSeguir(sigPaso));
+            typeWriter("Estos son nuestros momentos. Toca tus favoritas: se marcarán y se descargarán.", () => botonSeguir(sigPaso));
         }
 
         function pasoJuegos() {
@@ -394,7 +441,7 @@
 
         // ---------- Escena pixel art ----------
         const SUELO = 130;
-        const BANCO_X = 210;
+        const BANCO_X = 228;
 
         function rect(c, x, y, w, h) { ctx.fillStyle = c; ctx.fillRect(Math.round(x), Math.round(y), w, h); }
 
@@ -437,21 +484,46 @@
         function dibujar() {
             S.t++;
             if (S.escena === 'banco' && !S.sentado) {
-                S.x = Math.max(5, S.x + S.dir * 1.6);
-                if (S.x >= BANCO_X - 4) {
+                S.x = Math.max(5, Math.min(298, S.x + S.dir * 1.8));
+                if (S.dir && S.t - S.ultimoPaso > 11) {
+                    sonidoRetro(160 + Math.random() * 35, 0.045, 'triangle');
+                    S.ultimoPaso = S.t;
+                }
+                if (!S.suelo) {
+                    S.vy += 0.22;
+                    S.y += S.vy;
+                    if (S.y >= 0) {
+                        S.y = 0; S.vy = 0; S.suelo = true;
+                        sonidoRetro(230, 0.1, 'triangle');
+                    }
+                }
+                if (S.x >= BANCO_X - 7 && S.suelo) {
                     S.sentado = true;
                     S.x = BANCO_X + 10;
+                    sonidoRetro(880, 0.14, 'triangle');
                     escenaBancoSentado();
                 }
             }
 
             if (S.escena === 'banco') {
                 cielo(['#0a1a3a', '#12285a', '#1c3b7a']);
-                rect('#1f5a1f', 0, SUELO, 320, 20);
+                for (let i = 0; i < 14; i++) {
+                    const sx = (i * 47 + 13) % 320;
+                    const sy = 12 + (i * 29) % 70;
+                    rect(S.t % 50 < 25 ? '#52769b' : '#a1b6d0', sx, sy, 2, 2);
+                }
+                rect('#142943', 0, SUELO - 24, 320, 24);
+                for (let bx = 8; bx < 320; bx += 38) rect('#203a56', bx, SUELO - 35 - (bx % 3) * 6, 24, 35 + (bx % 3) * 6);
+                rect('#315f35', 0, SUELO, 320, 20);
+                rect('#75a94b', 0, SUELO, 320, 2);
                 banco(SUELO);
-                persona(S.x, SUELO, S.sentado ? 'sentado' : (S.dir ? 'camina' : 'parado'));
+                persona(S.x, SUELO + S.y, S.sentado ? 'sentado' : (!S.suelo || S.dir ? 'camina' : 'parado'));
             } else if (S.escena === 'escritorio') {
                 rect('#1a1a2a', 0, 0, 320, SUELO);
+                for (let i = 0; i < 8; i++) {
+                    rect('#27334b', i * 43, 30 + (i % 3) * 12, 31, SUELO - 30 - (i % 3) * 12);
+                    rect('#ffc857', i * 43 + 7, 42 + (i % 3) * 12, 3, 3);
+                }
                 rect('#3a2a1a', 0, SUELO, 320, 20);
                 rect('#8a5a2a', 150, SUELO - 24, 130, 4);
                 rect('#5a3a1a', 156, SUELO - 20, 4, 20);
@@ -463,6 +535,11 @@
                 persona(130, SUELO, 'sentado');
             } else if (S.escena === 'atardecer' || S.escena === 'beso') {
                 cielo(['#2b1a4a', '#7a2a6a', '#d0475a', '#ff8a3a', '#ffc04a']);
+                for (let i = 0; i < 4; i++) {
+                    const cx = (S.t * 0.18 + i * 92) % 370 - 30;
+                    rect('rgba(255,220,190,0.35)', cx, 24 + i % 2 * 16, 18, 4);
+                    rect('rgba(255,220,190,0.35)', cx + 5, 20 + i % 2 * 16, 12, 4);
+                }
                 ctx.fillStyle = '#ffe28a';
                 ctx.beginPath(); ctx.arc(80, SUELO, 38, Math.PI, 0); ctx.fill();
                 rect('#1a2a10', 0, SUELO, 320, 20);
@@ -492,6 +569,7 @@
             canvas.style.display = 'block';
             S.escena = nombre;
             S.t = 0;
+            S.y = 0; S.vy = 0; S.suelo = true;
             S.corazones = [];
             rafId = requestAnimationFrame(dibujar);
         }
@@ -511,29 +589,26 @@
             S.x = 20; S.sentado = false;
             controles.style.display = 'flex';
             textoConsola.style.display = 'block';
-            textoConsola.innerHTML = "Mueve al muñeco con las flechas hasta el banco.";
+            textoConsola.innerHTML = "Lleva a nuestro personaje hasta el banco. Puedes moverte y saltar.";
         }
 
         function escenaBancoSentado() {
             controles.style.display = 'none';
             S.dir = 0;
-            dialogo(["Oye Sydney, estos han sido los 2 meses más raros de mi vida, no sé cómo sentirme."], 0, escenaEscritorio);
+            dialogo(["Oye Sydney, estos han sido los 2 meses más raros y bonitos de mi vida, no sé cómo sentirme. A veces trato de poder trabajar, estudiar o hacer algo, pero no puedo dejar de pensar en ti, no sé qué me hiciste..."], 0, escenaEscritorio);
         }
 
         function escenaEscritorio() {
             iniciarEscenaPixel('escritorio');
-            dialogo(["A veces trato de poder trabajar, estudiar o hacer algo, pero no puedo dejar de pensar en ti... no sé qué me hiciste."], 0, escenaAtardecer);
+            dialogo(["A veces trato simplemente de despejar mi mente y estás ahí. No sé qué me hiciste o cómo... A veces pienso en darte un tiempo para calmar todo, pero recuerdo que estoy enamorado de ti. Lo pienso, lo analizo y no sé cómo alguien tan solitario como yo pudo caer. No sé si son tus ojos, tu cabello, tu humor o cómo me tratas cuando estoy contigo."], 0, escenaAtardecer);
         }
 
         function escenaAtardecer() {
             iniciarEscenaPixel('atardecer');
             dialogo([
-                "A veces trato simplemente de despejar mi mente y estás ahí. No sé qué me hiciste o cómo, a veces siento que nunca te tendré, o pienso que de seguro sería mejor para mí estar un tiempo sin ti...",
-                "Pero recuerdo que estoy enamorado de ti. Lo pienso, lo analizo y no sé cómo alguien tan solitario como yo pudo caer. No sé si son tus ojos, tu cabello, tu humor o cómo me tratas cuando estoy contigo.",
-                "Voy un mes sin verte y me siento fatal. No me gusta la pared que pones entre tú y yo. Lo curioso es que siento que más quiero estar contigo: soy un ser solitario que ama estar solo, pero odio que tú no estés.",
-                "Siempre pienso que algo hice, o que algo de mí es lo que hace que pase, pero tú aseguras que no, que sí te importo, aunque siento que no haces el esfuerzo de quererme.",
-                "Pero pase lo que pase, yo quiero estar presente cuando tengas el tiempo, aunque no niego que tengo miedo de que lo que espero me hiera. No sé si duele más un corazón roto o ver a tus padres muertos.",
-                "No sé. Ahorita solo te tengo a ti en mi cabeza. Estoy enamorado de ti."
+                "Voy a un mes sin verte y se siente pesado. No me gusta la distancia o la pared que a veces pones, porque lo único que quiero es estar contigo. Odio que no estés.",
+                "Siempre pienso que algo hice mal, pero tú me aseguras que no, que sí te importo. A pesar de todo, quiero estar presente cuando tengas el tiempo.",
+                "Sé que a veces da vértigo arriesgarse a sentir tanto, pero lo tengo clarísimo... Estoy enamorado de ti."
             ], 0, escenaBeso);
         }
 
@@ -551,12 +626,14 @@
             semaforoBox.style.display = 'none';
             pasos.push(
                 capitulo("Ya llevamos 2 meses, sin contar ese mes de dudas. Y aun así, aquí estamos... escribiendo nuestra historia."),
-                capitulo("Ese momento en Caracas, esa foto de nuestras piernas... nunca imaginé enamorarme de alguien tan igual y tan diferente a mí.", [FOTO_CARACAS]),
+                capitulo("Ese momento en Caracas, esa foto de nuestras piernas... nunca imaginé enamorarme de alguien tan igual y tan diferente a mí.", FOTO_CARACAS ? [FOTO_CARACAS] : []),
                 capitulo("El 13 de octubre de 2026 te invité a mi casa para ver el lanzamiento de Artemis II. Ese día sentí que compartir cosas contigo me hace feliz de verdad."),
                 capitulo("Y lo de la oficina... ahí hubo una chispa especial. Contigo todo se siente distinto, intenso y bonito.", [FOTO_OFICINA]),
                 pasoJuegos,
-                capitulo("Hubo un día loco: dejé el carro, el carro de tu mami y mi teléfono. Me dio miedo porque sabías mi clave, pero me enamoró más que respetaras no revisarlo.", FOTOS_TELEFONO),
+                capitulo("Hubo un día loco: dejé mi teléfono en el carro de tu mami. Me dio miedo porque sabías mi clave, pero me enamoró más que respetaras no revisarlo.", FOTOS_TELEFONO),
                 pasoMomentos,
+                capitulo("Esta es mi foto favorita.", [FOTO_FAVORITA]),
+                capitulo("Y aquí, otro momento de nosotros que también quiero guardar.", [FOTO_OTRO_MOMENTO]),
                 pasoBanco,
                 () => { semaforoBox.style.display = 'inline-block'; faseCohete(respuestaHistoria); }
             );
@@ -564,8 +641,13 @@
         }
 
         window.addEventListener('keydown', e => {
+            if (canvas.style.display !== 'block') return;
             if (e.key === 'ArrowRight') S.dir = 1;
             if (e.key === 'ArrowLeft') S.dir = -1;
+            if (['ArrowUp', ' ', 'w', 'W'].includes(e.key)) {
+                e.preventDefault();
+                saltar();
+            }
         });
         window.addEventListener('keyup', e => {
             if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') S.dir = 0;
@@ -574,6 +656,19 @@
             const b = document.getElementById(id);
             b.addEventListener('pointerdown', () => { S.dir = d; });
             ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, () => { S.dir = 0; }));
+        });
+        function saltar() {
+            if (S.escena !== 'banco' || S.sentado || !S.suelo) return;
+            S.suelo = false;
+            S.vy = -4.2;
+            sonidoRetro(520, 0.13, 'square');
+        }
+        document.getElementById('btn-salto').addEventListener('pointerdown', saltar);
+        document.getElementById('btn-sonido').addEventListener('click', event => {
+            efectosActivos = !efectosActivos;
+            event.currentTarget.textContent = efectosActivos ? '♪' : '×';
+            event.currentTarget.setAttribute('aria-label', efectosActivos ? 'Silenciar efectos' : 'Activar efectos');
+            if (efectosActivos) sonidoRetro(740, 0.12, 'triangle');
         });
 
         function faseCohete(respuesta) {
