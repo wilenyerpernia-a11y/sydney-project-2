@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Para_Sydney.exe</title>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <style>
+        /* FONDO Y ESTÉTICA CRT */
+        body {
+            background-color: #051005; color: #4af626; font-family: 'VT323', monospace;
+            padding: 0; margin: 0; overflow: hidden; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; height: 100vh; width: 100vw;
+            text-shadow: 0 0 3px #4af626, 0 0 8px #228d11; 
+        }
+
+        /* EFECTO PANTALLA ANTIGUA (SCANLINES) */
+        body::after {
+            content: " "; display: block; position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                        radial-gradient(circle, rgba(0,0,0,0) 60%, rgba(0,0,0,0.6) 100%);
+            z-index: 999; background-size: 100% 4px, 100% 100%; pointer-events: none; 
+        }
+
+        /* MARCO RETRO DECORATIVO */
+        .marco-retro {
+            position: absolute; top: 2%; bottom: 2%; left: 2%; right: 2%;
+            border: 2px solid #4af626; box-shadow: 0 0 10px #4af626, inset 0 0 10px #4af626;
+            border-radius: 10px; pointer-events: none; z-index: 5;
+        }
+        .deco-sup {
+            position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+            background-color: #051005; padding: 0 10px; font-size: 18px;
+        }
+        .deco-inf {
+            position: absolute; bottom: -12px; left: 50%; transform: translateX(-50%);
+            background-color: #051005; padding: 0 10px; font-size: 18px;
+        }
+        .deco-lateral {
+            position: absolute; top: 10%; bottom: 10%; width: 20px;
+            font-size: 12px; opacity: 0.3; word-break: break-all; overflow: hidden;
+            line-height: 1.2; text-align: center;
+        }
+        .deco-izq { left: 5px; } .deco-der { right: 5px; }
+
+        /* CONTENEDOR PRINCIPAL - Forzado arriba rozando la decoración */
+        #terminal {
+            width: 85%; max-width: 420px; height: 85vh;
+            padding: 15px 10px 10px 10px; position: relative; z-index: 10;
+            display: flex; flex-direction: column; 
+            justify-content: flex-start; align-items: center; /* Alineado arriba */
+            gap: 12px; /* Reducido para evitar que baje mucho */
+        }
+
+        /* --- CAJA DEL MUÑECO SEMÁFORO LED --- */
+        .semaforo-box {
+            background-color: #111; border: 2px solid #222; border-radius: 15px;
+            padding: 6px 10px; display: none; box-shadow: 0 0 15px #000 inset, 0 0 10px #4af626;
+            margin-top: 5px; /* Pequeño espacio con el borde superior */
+        }
+        #led-man {
+            font-family: monospace; color: #4af626;
+            text-shadow: 0 0 5px #4af626, 0 0 15px #4af626;
+            margin: 0; font-size: 18px; line-height: 1.1; white-space: pre; text-align: center;
+        }
+
+        /* --- CONTENEDOR DE ESCENAS ASCII (CARRO, COHETE, ETC) --- */
+        #escena-ascii {
+            width: 100%; height: 80px; position: relative; overflow: hidden;
+            display: none; align-items: flex-end; justify-content: center;
+        }
+        
+        .carro-container {
+            position: absolute; bottom: 0; left: -150px; display: flex; align-items: flex-end;
+            animation: drive 4s linear forwards;
+        }
+        @keyframes drive { 0% { left: -150px; } 100% { left: 100%; } }
+        
+        .cohete-anim {
+            position: absolute; bottom: -100px; color: #0ff; text-shadow: 0 0 10px #0ff;
+            animation: fly 3s ease-in forwards; white-space: pre; font-size: 14px;
+        }
+        @keyframes fly { 0% { bottom: -100px; } 100% { bottom: 150px; } }
+
+        .humo { font-size: 12px; margin-right: 5px; color: #aaa; animation: puff 1s infinite linear; }
+        @keyframes puff { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-20px) scale(2); } }
+
+        .corazon-rebotando {
+            color: #ff3333; text-shadow: 0 0 10px #ff3333; font-size: 18px; margin-right: 15px;
+            animation: bounce 0.5s ease-in-out infinite alternate;
+        }
+        @keyframes bounce { 0% { transform: translateY(0); } 100% { transform: translateY(-20px); } }
+
+        /* --- ESCENA BESO Y CORAZONES INFINITOS --- */
+        .escena-beso-container {
+            position: relative; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; width: 100%; height: 100px;
+        }
+        .pareja-beso {
+            color: #4af626; text-shadow: 0 0 8px #4af626; font-size: 28px;
+            white-space: pre; text-align: center; z-index: 12; line-height: 1.2;
+        }
+        .corazon-beso {
+            color: #ff3333; text-shadow: 0 0 10px #ff3333; font-size: 24px;
+            position: absolute; bottom: 35px; animation: beat 0.6s infinite alternate; z-index: 15;
+        }
+        @keyframes beat { 0% { transform: scale(1); } 100% { transform: scale(1.25); } }
+
+        /* Corazones flotantes infinitos */
+        .corazon-flotante {
+            position: absolute; color: #ff3333; text-shadow: 0 0 8px #ff3333;
+            font-size: 18px; bottom: 40px; pointer-events: none; opacity: 0;
+            animation: flotarCorazon 3s infinite ease-out;
+        }
+        @keyframes flotarCorazon {
+            0% { transform: translateY(0) translateX(0) scale(0.5); opacity: 0; }
+            15% { opacity: 0.9; }
+            100% { transform: translateY(-80px) translateX(var(--random-x, 0px)) scale(1.2); opacity: 0; }
+        }
+
+        /* TEXTOS Y BOTONES - Centrados */
+        #texto-consola {
+            font-size: 23px; line-height: 1.25; 
+            min-height: 80px; width: 100%; text-align: center;
+        }
+        .cursor::after { content: "█"; animation: blink 1s infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+        /* CONTENEDOR DE BOTONES - Centrado */
+        .btn-container {
+            width: 100%;
+            display: flex; flex-direction: column; gap: 8px; align-items: center;
+            justify-content: center;
+        }
+        button {
+            background-color: #051005; color: #4af626; border: 1px solid #4af626;
+            padding: 8px; font-family: 'VT323', monospace; font-size: 21px;
+            cursor: pointer; width: 95%; text-shadow: 0 0 5px #4af626;
+            box-shadow: inset 0 0 8px rgba(74, 246, 38, 0.3); position: relative; z-index: 1000;
+        }
+        button:active { background-color: #4af626; color: #051005; }
+        #btn-no-final { position: relative; transition: all 0.2s ease-out; }
+
+        /* Ajuste específico de pantalla de inicio para centrarla en esta nueva distribución */
+        #pantalla-inicio {
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; height: 100%; width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+    <audio id="bg-music" src="cancion.mp3" loop></audio>
+
+    <div class="marco-retro">
+        <div class="deco-sup">[ SYS.HACK.v99 ]</div>
+        <div class="deco-inf">CONEXIÓN ENCRIPTADA</div>
+    </div>
+    <div class="deco-lateral deco-izq">010010110110010101111001</div>
+    <div class="deco-lateral deco-der">98A7F6C239B100FF45EE890</div>
+
+    <div id="terminal">
+        <div id="pantalla-inicio">
+            <p class="cursor" style="font-size: 24px; margin-bottom: 25px;">buscando_a_sydney.exe</p>
+            <button onclick="arrancarSistema()">> INICIAR CONEXIÓN <</button>
+            <p style="font-size: 16px; margin-top: 15px; color:#3a7a28;">(Sube el volumen 🎧)</p>
+        </div>
+
+        <!-- EL SEMÁFORO LED (Rozará la parte superior de la pantalla) -->
+        <div id="semaforo" class="semaforo-box">
+            <div id="led-man"></div>
+        </div>
+
+        <!-- ESCENAS ASCII (Carro, cohete, etc) -->
+        <div id="escena-ascii"></div>
+
+        <!-- TEXTO Y BOTONES -->
+        <div id="texto-consola" style="display: none;"></div>
+        <div id="botones-dinamicos" class="btn-container" style="display:none;"></div>
+    </div>
+
+    <script>
+        const audio = document.getElementById('bg-music');
+        const pantallaInicio = document.getElementById('pantalla-inicio');
+        const semaforoBox = document.getElementById('semaforo');
+        const ledMan = document.getElementById('led-man');
+        const escenaAscii = document.getElementById('escena-ascii');
+        const textoConsola = document.getElementById('texto-consola');
+        const botonesDinamicos = document.getElementById('botones-dinamicos');
+
+        // ANIMACIONES DEL MUÑECO LED (Semáforo)
+        const framesCaminar = [
+            "  O  \n /█\\ \n / \\ ",
+            "  O  \n /█> \n  >\\ "
+        ];
+        const framesPensar = [
+            "  O ?\n /█\\ \n / \\ "
+        ];
+        const framesBailar = [
+            " \\O/ \n  █  \n / \\ ",
+            "  O  \n /█\\ \n / \\ "
+        ];
+
+        let intervaloMuneco;
+        function setEstadoMuneco(estado) {
+            clearInterval(intervaloMuneco);
+            let frames = framesPensar;
+            let velocidad = 500;
+
+            if(estado === 'caminar') { frames = framesCaminar; velocidad = 400; }
+            if(estado === 'bailar') { frames = framesBailar; velocidad = 300; }
+
+            let i = 0;
+            ledMan.innerText = frames[0];
+            if(frames.length > 1) {
+                intervaloMuneco = setInterval(() => {
+                    i = (i + 1) % frames.length;
+                    ledMan.innerText = frames[i];
+                }, velocidad);
+            }
+        }
+
+        // ESCRITURA MÁQUINA
+        function typeWriter(texto, callback) {
+            textoConsola.innerHTML = "";
+            let i = 0;
+            textoConsola.classList.add('cursor');
+            setEstadoMuneco('caminar');
+
+            function escribir() {
+                if (i < texto.length) {
+                    textoConsola.innerHTML += texto.charAt(i);
+                    i++;
+                    setTimeout(escribir, 40);
+                } else {
+                    textoConsola.classList.remove('cursor');
+                    setEstadoMuneco('pensar');
+                    if (callback) callback();
+                }
+            }
+            escribir();
+        }
+
+        function limpiarEscena() {
+            botonesDinamicos.style.display = 'none';
+            escenaAscii.innerHTML = '';
+            escenaAscii.style.display = 'none';
+        }
+
+        function arrancarSistema() {
+            pantallaInicio.style.display = 'none';
+            textoConsola.style.display = 'block';
+            textoConsola.innerHTML = "<span class='cursor'>Conectando a servidor seguro...</span>";
+            
+            // ADELANTAR LA CANCIÓN 5 SEGUNDOS Y REPRODUCIR
+            audio.currentTime = 5; 
+            audio.volume = 1;
+            audio.play();
+
+            // Esperar 4 segundos de música antes de la primera escena
+            setTimeout(() => {
+                fase1();
+            }, 4000);
+        }
+
+        function fase1() {
+            limpiarEscena();
+            semaforoBox.style.display = 'inline-block';
+            escenaAscii.style.display = 'flex';
+            
+            // Animación del carro con el corazón
+            escenaAscii.innerHTML = `
+                <div class="carro-container">
+                    <div class="corazon-rebotando">♥</div>
+                    <div class="humo">o O .</div>
+                    <div style="line-height: 1; white-space: pre; font-size: 14px;"> .---.\n=[_---_]\n -(o)-(o)-</div>
+                </div>`;
+
+            typeWriter("Hola Sydney. ¿Segura que quieres seguir adelante? Acuérdate que una vez cruzas esta línea, no te puedes echar para atrás.", () => {
+                botonesDinamicos.innerHTML = `<button onclick="faseIdentidad()">> Continuar <</button>`;
+                botonesDinamicos.style.display = 'flex';
+            });
+        }
+
+        function faseIdentidad() {
+            limpiarEscena();
+            typeWriter("Verificación de seguridad requerida... ¿Eres tú la chica con la sonrisa más linda de este planeta?", () => {
+                botonesDinamicos.innerHTML = `
+                    <button onclick="faseTonta1()">> Obvio, soy yo <</button>
+                    <button onclick="faseTonta1()">> Ay, no sé <</button>`;
+                botonesDinamicos.style.display = 'flex';
+            });
+        }
+
+        function faseTonta1() {
+            limpiarEscena();
+            typeWriter("Identidad confirmada. Ahora una pregunta seria: Si tuvieras que elegir, ¿qué prefieres...?", () => {
+                botonesDinamicos.innerHTML = `
+                    <button onclick="faseTonta2()">> ¿Damer un abrazo? <</button>
+                    <button onclick="faseTonta2()">> ¿Pegarme? <</button>`;
+                botonesDinamicos.style.display = 'flex';
+            });
+        }
+
+        function faseTonta2() {
+            limpiarEscena();
+            typeWriter("Jaja, lo suponía. Último protocolo: ¿Cuántas veces al día crees que pasas por mi mente?", () => {
+                botonesDinamicos.innerHTML = `
+                    <button onclick="faseEnamorado()">> Unas 100 veces <</button>
+                    <button onclick="faseEnamorado()">> Todo el santo día <</button>`;
+                botonesDinamicos.style.display = 'flex';
+            });
+        }
+
+        function faseEnamorado() {
+            limpiarEscena();
+            typeWriter("Exacto. Con todo esto aclarado... Sabes que lo más probable es que estoy perdidamente enamorado tuyo, ¿verdad?", () => {
+                botonesDinamicos.innerHTML = `
+                    <button onclick="faseCohete('si')">> Sí, lo sé <</button>
+                    <button onclick="faseCohete('no')">> ¿En serio? <</button>`;
+                botonesDinamicos.style.display = 'flex';
+            });
+        }
+
+        function faseCohete(respuesta) {
+            limpiarEscena();
+            let extra = respuesta === 'no' ? "¿Cómo que 'en serio'? Hagamos como que dijiste que sí... " : "";
+            
+            escenaAscii.style.display = 'flex';
+            escenaAscii.style.height = '120px';
+            escenaAscii.innerHTML = `<div class="cohete-anim">   /\\\n  (  )\n  (  )\n /|/\\|\\\n /_||_\\</div>`;
+
+            typeWriter(extra + "Sé que solo me falta ser valiente y preguntarte algo. Sé que el 'sí' puede que ya esté, pero verdaderamente me da pavor. Me pediste tiempo, pero un paso importante creo que ya nos lo saltamos... ¿Quieres seguir?", () => {
+                botonesDinamicos.innerHTML = `<button onclick="granPregunta()">> Iniciar secuencia final <</button>`;
+                botonesDinamicos.style.display = 'flex';
+            });
+        }
+
+        function granPregunta() {
+            limpiarEscena();
+            textoConsola.style.fontSize = '32px';
+            textoConsola.style.textAlign = 'center';
+            textoConsola.style.textShadow = '0 0 10px #4af626';
+
+            typeWriter("Sydney Linda... ¿Quieres ser mi novia?", () => {
+                botonesDinamicos.innerHTML = `
+                    <button onclick="exito()" style="width: 80%; font-size: 28px; padding: 12px; margin-bottom: 5px;">> ¡SÍ! <3 <</button>
+                    <button id="btn-no-final" ontouchstart="escaparBoton()" onmouseover="escaparBoton()" style="width: 50%;">> No <</button>`;
+                botonesDinamicos.style.display = 'flex';
+            });
+        }
+
+        function escaparBoton() {
+            const btnNo = document.getElementById('btn-no-final');
+            btnNo.style.position = 'absolute';
+            btnNo.style.top = Math.random() * 80 + 'px';
+            if (Math.random() > 0.5) {
+                btnNo.style.left = '5%'; btnNo.style.right = 'auto';
+            } else {
+                btnNo.style.right = '5%'; btnNo.style.left = 'auto';
+            }
+        }
+
+        function exito() {
+            limpiarEscena();
+            setEstadoMuneco('bailar');
+            textoConsola.style.fontSize = '26px';
+            textoConsola.innerHTML = "[SISTEMA HACKEADO CON ÉXITO] <br><br> Te quiero.";
+            
+            escenaAscii.style.display = 'flex';
+            escenaAscii.style.height = '110px';
+            
+            escenaAscii.innerHTML = `
+                <div class="escena-beso-container">
+                    <div class="corazon-beso">♥</div>
+                    <div class="pareja-beso">( -_-)   (-_- )</div>
+                </div>`;
+
+            setInterval(() => {
+                const contenedorBeso = document.querySelector('.escena-beso-container');
+                if (contenedorBeso) {
+                    const corazon = document.createElement('div');
+                    corazon.className = 'corazon-flotante';
+                    corazon.innerText = '♥';
+                    
+                    const randomX = (Math.random() * 60 - 30) + 'px';
+                    corazon.style.setProperty('--random-x', randomX);
+                    corazon.style.animationDelay = Math.random() * 0.5 + 's';
+                    
+                    contenedorBeso.appendChild(corazon);
+
+                    setTimeout(() => {
+                        corazon.remove();
+                    }, 3000);
+                }
+            }, 350);
+        }
+    </script>
+</body>
+</html>
