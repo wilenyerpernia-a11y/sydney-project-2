@@ -462,13 +462,20 @@
         let pasoIdx = 0;
         let respuestaHistoria = 'si';
         let rafId = null;
-        const S = { escena: '', x: 20, dir: 0, sentado: false, t: 0, corazones: [], y: 0, vy: 0, suelo: true, ultimoPaso: 0, stage: 0, frase: 0, objetoX: 270, fraseTomada: false };
+        const S = { escena: '', x: 20, dir: 0, sentado: false, t: 0, corazones: [], y: 0, vy: 0, suelo: true, ultimoPaso: 0, stage: 0, frase: 0, objetoX: 270, fraseTomada: false, obstaculos: [] };
         const RECUERDOS = [
             { fondo: 'escritorio', titulo: 'El escritorio', frases: ['Dos meses raros y bonitos.', 'Trabajo, estudio... y pienso en ti.'] },
             { fondo: 'parque', titulo: 'Un respiro', frases: ['Intento despejar mi mente.', 'Y ahí estás. ¿Qué me hiciste?', 'A veces pienso en darte tiempo.'] },
-            { fondo: 'noche', titulo: 'Pensamientos de noche', frases: ['Pero estoy enamorado de ti.', '¿Cómo caí yo, tan solitario?', 'Tus ojos, tu cabello y tu humor.'] },
-            { fondo: 'atardecer', titulo: 'Un mes sin verte', frases: ['Me encanta cómo me tratas.', 'Un mes sin verte pesa.', 'Odio la distancia. Quiero estar contigo.'] },
+            { fondo: 'noche', titulo: 'Pensamientos de noche', frases: ['Pero estoy enamorado de ti.', '¿Cómo caí yo, siendo tan solitario?', 'Tus ojos, tu cabello y tu humor.'] },
+            { fondo: 'atardecer', titulo: 'Ya llevo un mes sin verte', frases: ['Me encanta cómo me tratas cuando estamos juntos.', 'Un mes sin verte pesa.', 'Odio la distancia. Quiero estar contigo.'] },
             { fondo: 'camino', titulo: 'Lo que siento', frases: ['A veces creo que hice algo mal.', 'Tú me aseguras que sí te importo.', 'Quiero estar cuando tengas tiempo.', 'Da vértigo sentir tanto.', 'Lo tengo claro: estoy enamorado de ti.'] }
+        ];
+        const OBSTACULOS_RECUERDO = [
+            [{ x: 78, w: 18, h: 15, tipo: 'caja' }, { x: 150, w: 24, h: 19, tipo: 'libros' }, { x: 218, w: 20, h: 12, tipo: 'cable' }],
+            [{ x: 72, w: 27, h: 20, tipo: 'matorral' }, { x: 143, w: 22, h: 14, tipo: 'roca' }, { x: 211, w: 30, h: 10, tipo: 'raiz' }],
+            [{ x: 82, w: 17, h: 20, tipo: 'cono' }, { x: 151, w: 25, h: 15, tipo: 'caja' }, { x: 218, w: 21, h: 18, tipo: 'neon' }],
+            [{ x: 75, w: 30, h: 10, tipo: 'charco' }, { x: 145, w: 23, h: 18, tipo: 'roca' }, { x: 215, w: 25, h: 14, tipo: 'matorral' }],
+            [{ x: 77, w: 20, h: 14, tipo: 'raiz' }, { x: 148, w: 19, h: 19, tipo: 'cono' }, { x: 216, w: 26, h: 15, tipo: 'flores' }]
         ];
         let sintetizador;
         let efectosActivos = true;
@@ -687,6 +694,59 @@
             ctx.textAlign = 'start';
         }
 
+        function dibujarObstaculos() {
+            S.obstaculos.forEach(obstaculo => {
+                const y = SUELO - obstaculo.h;
+                if (obstaculo.tipo === 'caja') {
+                    rect('#93552e', obstaculo.x, y, obstaculo.w, obstaculo.h);
+                    rect('#c47a43', obstaculo.x + 3, y + 3, obstaculo.w - 6, 3);
+                    rect('#573522', obstaculo.x + 4, y + 8, 3, obstaculo.h - 9);
+                } else if (obstaculo.tipo === 'libros') {
+                    rect('#c95858', obstaculo.x, SUELO - 7, obstaculo.w, 7);
+                    rect('#e2bf58', obstaculo.x + 3, SUELO - 14, obstaculo.w - 4, 7);
+                    rect('#6288bc', obstaculo.x + 1, y, obstaculo.w - 2, 7);
+                } else if (obstaculo.tipo === 'matorral' || obstaculo.tipo === 'flores') {
+                    rect('#68472d', obstaculo.x + 10, SUELO - 9, 6, 9);
+                    rect(obstaculo.tipo === 'flores' ? '#e478a1' : '#24744b', obstaculo.x, y + 5, 13, 11);
+                    rect(obstaculo.tipo === 'flores' ? '#ffd56f' : '#328e55', obstaculo.x + 10, y, 16, 15);
+                    rect(obstaculo.tipo === 'flores' ? '#e478a1' : '#24744b', obstaculo.x + 19, y + 7, 10, 9);
+                } else if (obstaculo.tipo === 'roca') {
+                    rect('#697282', obstaculo.x + 3, y + 5, obstaculo.w - 6, obstaculo.h - 5);
+                    rect('#9ca6b0', obstaculo.x + 7, y + 2, obstaculo.w - 14, 6);
+                } else if (obstaculo.tipo === 'cono') {
+                    ctx.fillStyle = '#ff9d43';
+                    ctx.beginPath(); ctx.moveTo(obstaculo.x + obstaculo.w / 2, y); ctx.lineTo(obstaculo.x + obstaculo.w, SUELO); ctx.lineTo(obstaculo.x, SUELO); ctx.fill();
+                    rect('#fff0cb', obstaculo.x + 5, y + obstaculo.h * 0.62, obstaculo.w - 10, 3);
+                } else if (obstaculo.tipo === 'charco') {
+                    rect('#39c8df', obstaculo.x, SUELO - 5, obstaculo.w, 5);
+                    rect('#b4f8ff', obstaculo.x + 4, SUELO - 5, 7, 2);
+                } else if (obstaculo.tipo === 'raiz') {
+                    rect('#8b603d', obstaculo.x, SUELO - 7, obstaculo.w, 7);
+                    rect('#a4774d', obstaculo.x + 5, y, 9, obstaculo.h);
+                    rect('#8b603d', obstaculo.x + 12, y + 7, 8, 6);
+                } else if (obstaculo.tipo === 'cable') {
+                    rect('#f4d34e', obstaculo.x, SUELO - 5, obstaculo.w, 5);
+                    rect('#252536', obstaculo.x + 4, SUELO - 3, obstaculo.w - 8, 2);
+                } else if (obstaculo.tipo === 'neon') {
+                    rect('#37274c', obstaculo.x, y, obstaculo.w, obstaculo.h);
+                    rect('#e36fc5', obstaculo.x + 4, y + 4, obstaculo.w - 8, 3);
+                    rect('#8c68db', obstaculo.x + 7, y + 10, obstaculo.w - 14, 3);
+                }
+            });
+        }
+
+        function revisarObstaculos() {
+            const golpe = S.obstaculos.find(obstaculo =>
+                S.x + 13 >= obstaculo.x && S.x <= obstaculo.x + obstaculo.w && S.y > -obstaculo.h
+            );
+            if (!golpe) return;
+            S.x = Math.max(18, golpe.x - 24);
+            S.dir = 0;
+            S.y = 0; S.vy = 0; S.suelo = true;
+            sonidoRetro(135, 0.16, 'sawtooth');
+            textoConsola.innerHTML = '¡Uy! Pulsa ↑ o espacio para saltar y llegar al recuerdo.';
+        }
+
         function tomarFraseRecuerdo() {
             if (S.fraseTomada) return;
             S.fraseTomada = true;
@@ -720,7 +780,10 @@
                     sonidoRetro(880, 0.14, 'triangle');
                     escenaBancoSentado();
                 }
-                if (S.escena === 'coleccion' && S.x >= S.objetoX - 8 && S.suelo) tomarFraseRecuerdo();
+                if (S.escena === 'coleccion') {
+                    revisarObstaculos();
+                    if (S.x >= S.objetoX - 8 && S.suelo) tomarFraseRecuerdo();
+                }
             }
 
             if (S.escena === 'banco') {
@@ -738,6 +801,7 @@
                 persona(S.x, SUELO + S.y, S.sentado ? 'sentado' : (!S.suelo || S.dir ? 'camina' : 'parado'));
             } else if (S.escena === 'coleccion') {
                 fondoRecuerdo(RECUERDOS[S.stage].fondo);
+                dibujarObstaculos();
                 dibujarObjetoRecuerdo();
                 persona(S.x, SUELO + S.y, !S.suelo || S.dir ? 'camina' : 'parado');
             } else if (S.escena === 'escritorio') {
@@ -809,9 +873,10 @@
             S.x = 18;
             S.objetoX = 268;
             S.fraseTomada = false;
+            S.obstaculos = OBSTACULOS_RECUERDO[stage];
             controles.style.display = 'flex';
             textoConsola.style.display = 'block';
-            textoConsola.innerHTML = `${RECUERDOS[stage].titulo}: camina hasta el objeto brillante.`;
+            textoConsola.innerHTML = `${RECUERDOS[stage].titulo}: usa ←/→ y salta con ↑ o espacio.`;
         }
 
         function avanzarRecuerdo() {
@@ -823,8 +888,9 @@
             S.x = 18;
             S.objetoX = 268;
             S.fraseTomada = false;
+            S.obstaculos = OBSTACULOS_RECUERDO[S.stage];
             controles.style.display = 'flex';
-            textoConsola.innerHTML = `${RECUERDOS[S.stage].titulo}: recoge el siguiente recuerdo.`;
+            textoConsola.innerHTML = `${RECUERDOS[S.stage].titulo}: salta con ↑/espacio o el botón ↑.`;
         }
 
         function dialogo(partes, i, fin) {
