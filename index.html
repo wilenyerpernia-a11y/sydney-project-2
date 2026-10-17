@@ -135,6 +135,15 @@
         #controles button { flex: 1; width: auto; min-width: 0; min-height: 44px; user-select: none; touch-action: none; }
         #controles button[data-salto] { color: #ffc857; border-color: #ffc857; text-shadow: 0 0 6px #ffc857; }
         .pixel-hint { margin: 0; font-size: 16px; color: #b7ffae; text-shadow: 0 0 6px #4af626; }
+        #companero {
+            display: none; position: fixed; left: 50%; bottom: 2.8vh; transform: translateX(-50%);
+            width: min(360px, 82vw); height: 64px; overflow: hidden; z-index: 15; pointer-events: none;
+            border-bottom: 1px solid rgba(74, 246, 38, 0.75);
+            background: linear-gradient(180deg, rgba(5, 16, 5, 0), rgba(5, 16, 5, 0.92));
+            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.3);
+        }
+        #companero.visible { display: block; }
+        #canvas-companero { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
 
         /* TEXTOS Y BOTONES - Centrados */
         #texto-consola {
@@ -206,6 +215,8 @@
         <div id="botones-dinamicos" class="btn-container" style="display:none;"></div>
     </div>
 
+    <div id="companero" aria-hidden="true"><canvas id="canvas-companero" width="320" height="64"></canvas></div>
+
     <script>
         const audio = document.getElementById('bg-music');
         const pantallaInicio = document.getElementById('pantalla-inicio');
@@ -214,6 +225,127 @@
         const escenaAscii = document.getElementById('escena-ascii');
         const textoConsola = document.getElementById('texto-consola');
         const botonesDinamicos = document.getElementById('botones-dinamicos');
+        const companero = document.getElementById('companero');
+        const canvasCompanero = document.getElementById('canvas-companero');
+        const ctxCompanero = canvasCompanero.getContext('2d');
+        const estadoCompanero = { escena: 'inicio', accion: 'caminar', x: -18, t: 0 };
+        let animacionCompanero;
+
+        function setEscenaCompanero(escena, accion = 'caminar') {
+            estadoCompanero.escena = escena;
+            estadoCompanero.accion = accion;
+            companero.classList.add('visible');
+            if (!animacionCompanero) animacionCompanero = requestAnimationFrame(animarCompanero);
+        }
+
+        function escenaCompaneroDeCapitulo(texto) {
+            if (texto.includes('Caracas')) setEscenaCompanero('caracas', 'caminar');
+            else if (texto.includes('lanzamiento')) setEscenaCompanero('cohete', 'pensar');
+            else if (texto.includes('oficina')) setEscenaCompanero('oficina', 'trabajar');
+            else if (texto.includes('teléfono')) setEscenaCompanero('telefono', 'cargar');
+            else if (texto.includes('foto favorita') || texto.includes('otro momento')) setEscenaCompanero('momentos', 'cargar');
+            else setEscenaCompanero('inicio', 'caminar');
+        }
+
+        function pintarCompanero(color, x, y, ancho, alto) {
+            ctxCompanero.fillStyle = color;
+            ctxCompanero.fillRect(Math.round(x), Math.round(y), ancho, alto);
+        }
+
+        function animarCompanero() {
+            const ctx = ctxCompanero;
+            const escena = estadoCompanero.escena;
+            const accion = estadoCompanero.accion;
+            const t = estadoCompanero.t++;
+            const ancho = canvasCompanero.width;
+            const alto = canvasCompanero.height;
+            ctx.clearRect(0, 0, ancho, alto);
+
+            const cielos = {
+                inicio: '#071608', carro: '#102139', caracas: '#243d60', cohete: '#111438',
+                oficina: '#182033', juegos: '#164334', telefono: '#30233c', momentos: '#17353a',
+                banco: '#122a4a', escritorio: '#20243a', parque: '#427d72', noche: '#171936',
+                atardecer: '#944b62', camino: '#50334f', beso: '#753553', pregunta: '#792e59'
+            };
+            const suelos = {
+                inicio: '#1b481b', carro: '#43536a', caracas: '#53627a', cohete: '#292949',
+                oficina: '#4c4037', juegos: '#367347', telefono: '#584452', momentos: '#286056',
+                banco: '#3f7544', escritorio: '#56473d', parque: '#609447', noche: '#35344e',
+                atardecer: '#435d3d', camino: '#6c5541', beso: '#3b5632', pregunta: '#46364d'
+            };
+            ctx.fillStyle = cielos[escena] || cielos.inicio;
+            ctx.fillRect(0, 0, ancho, alto);
+            if (escena === 'cohete' || escena === 'noche') {
+                for (let i = 0; i < 18; i++) {
+                    pintarCompanero(i % 4 ? '#a6b9df' : '#ffe69a', (i * 53 + 17) % ancho, 5 + (i * 19) % 35, 2, 2);
+                }
+            } else if (escena === 'oficina' || escena === 'escritorio') {
+                pintarCompanero('#33455e', 22, 8, 45, 30);
+                pintarCompanero('#f5cd78', 31, 15, 3, 3);
+                pintarCompanero('#f5cd78', 48, 25, 3, 3);
+                pintarCompanero('#29324a', 245, 20, 48, 24);
+            } else if (escena === 'juegos' || escena === 'parque') {
+                for (let i = 0; i < 4; i++) {
+                    const tx = 24 + i * 83;
+                    pintarCompanero('#624630', tx + 10, 22, 6, 24);
+                    pintarCompanero(i % 2 ? '#278353' : '#328e55', tx, 10, 28, 20);
+                }
+            } else if (escena === 'caracas') {
+                for (let i = 0; i < 7; i++) pintarCompanero('#344760', i * 49, 19 + (i % 3) * 8, 38, 29 - (i % 3) * 4);
+            } else if (escena === 'atardecer' || escena === 'beso' || escena === 'pregunta') {
+                ctx.fillStyle = '#ffd781';
+                ctx.beginPath(); ctx.arc(252, 31, 13, 0, Math.PI * 2); ctx.fill();
+                pintarCompanero('rgba(255,198,145,0.45)', 196, 20, 24, 4);
+                pintarCompanero('rgba(255,198,145,0.45)', 205, 16, 15, 4);
+            } else if (escena === 'telefono') {
+                pintarCompanero('#766079', 220, 20, 6, 22);
+                pintarCompanero('#a5dce0', 205, 35, 36, 3);
+            } else if (escena === 'momentos') {
+                for (let i = 0; i < 5; i++) pintarCompanero(i % 2 ? '#ff7c99' : '#ffe27c', 36 + i * 55, 17 + (i % 2) * 7, 15, 15);
+            }
+            ctx.fillStyle = suelos[escena] || suelos.inicio;
+            ctx.fillRect(0, 53, ancho, 11);
+            ctx.fillStyle = 'rgba(255,255,255,0.18)';
+            ctx.fillRect(0, 53, ancho, 2);
+
+            const x = accion === 'beso' ? 145 : estadoCompanero.x;
+            const rebote = accion === 'jugar' ? Math.abs(Math.sin(t / 5)) * 4 : 0;
+            const y = 52 - rebote;
+            const paso = Math.floor(t / 7) % 2;
+            pintarCompanero('#172117', x - 3, 51, 22, 3);
+            pintarCompanero('#e2ae7e', x + 4, y - 30, 10, 9);
+            pintarCompanero('#3b271f', x + 3, y - 31, 12, 4);
+            pintarCompanero(escena === 'beso' || escena === 'pregunta' ? '#df5b88' : '#e34545', x + 2, y - 21, 14, 11);
+            pintarCompanero('#283bb0', x + 3, y - 10, 5, 9 - paso * 3);
+            pintarCompanero('#283bb0', x + 10, y - 10, 5, 6 + paso * 3);
+            pintarCompanero('#f2c38f', x - 2, y - 19, 4, 9);
+            pintarCompanero('#f2c38f', x + 16, y - 19, 4, 9);
+
+            if (accion === 'conducir') {
+                pintarCompanero('#d34545', x - 5, 44, 30, 9);
+                pintarCompanero('#8bd5ee', x + 2, 39, 15, 7);
+                pintarCompanero('#111', x, 51, 6, 5);
+                pintarCompanero('#111', x + 17, 51, 6, 5);
+            } else if (accion === 'cargar') {
+                pintarCompanero('#ff5a75', x + 7, y - 39, 7, 7);
+            } else if (accion === 'jugar') {
+                pintarCompanero('#f2df48', x + 24 + Math.sin(t / 4) * 3, 45 - Math.abs(Math.sin(t / 4)) * 8, 6, 6);
+            } else if (accion === 'trabajar') {
+                pintarCompanero('#4af626', x + 18, y - 13, 9, 7);
+            } else if (accion === 'pensar') {
+                pintarCompanero('#fff', x + 18, y - 37, 3, 3);
+                pintarCompanero('#fff', x + 23, y - 42, 4, 4);
+            } else if (accion === 'beso') {
+                pintarCompanero('#f2c38f', 166, y - 30, 10, 9);
+                pintarCompanero('#744019', 165, y - 31, 12, 4);
+                pintarCompanero('#ff7caf', 164, y - 21, 14, 11);
+                pintarCompanero('#ff5a75', 151, y - 40 - Math.sin(t / 5) * 2, 7, 7);
+            }
+
+            estadoCompanero.x += accion === 'conducir' ? 1.15 : 0.62;
+            if (estadoCompanero.x > ancho + 8) estadoCompanero.x = -24;
+            animacionCompanero = requestAnimationFrame(animarCompanero);
+        }
 
         // ANIMACIONES DEL MUÑECO LED (Semáforo)
         const framesCaminar = [
@@ -277,6 +409,7 @@
 
         function arrancarSistema() {
             sonidoRetro(523, 0.18, 'triangle');
+            setEscenaCompanero('inicio', 'caminar');
             pantallaInicio.style.display = 'none';
             textoConsola.style.display = 'block';
             textoConsola.innerHTML = "<span class='cursor'>Conectando a servidor seguro...</span>";
@@ -293,6 +426,7 @@
         }
 
         function fase1() {
+            setEscenaCompanero('carro', 'conducir');
             limpiarEscena();
             semaforoBox.style.display = 'inline-block';
             escenaAscii.style.display = 'flex';
@@ -398,6 +532,7 @@
 
         function capitulo(texto, fotos = []) {
             return () => {
+                escenaCompaneroDeCapitulo(texto);
                 limpiarEscena();
                 mostrarFotos(fotos);
                 typeWriter(texto, () => botonSeguir(sigPaso));
@@ -405,6 +540,7 @@
         }
 
         function pasoMomentos() {
+            setEscenaCompanero('momentos', 'cargar');
             limpiarEscena();
             galeria.innerHTML = '<div class="grid-momentos">' +
                 FOTOS_MOMENTOS.map((f, i) => `<button type="button" class="moment-card" aria-label="Elegir momento ${i + 1}"><img src="${encodeURI(f)}" alt="Momento ${i + 1}"><span>♡</span></button>`).join('') + '</div>';
@@ -423,6 +559,7 @@
         }
 
         function pasoJuegos() {
+            setEscenaCompanero('juegos', 'jugar');
             limpiarEscena();
             typeWriter("Los juegos de niño en la cascada, las risas... Elige un juego y mira quién gana:", () => {
                 const resultados = {
@@ -664,6 +801,8 @@
                 escenaBeso();
                 return;
             }
+            const acciones = ['trabajar', 'caminar', 'pensar', 'caminar', 'cargar'];
+            setEscenaCompanero(RECUERDOS[stage].fondo, acciones[stage]);
             iniciarEscenaPixel('coleccion');
             S.stage = stage;
             S.frase = 0;
@@ -699,6 +838,7 @@
         }
 
         function pasoBanco() {
+            setEscenaCompanero('banco', 'caminar');
             iniciarEscenaPixel('banco');
             S.x = 20; S.sentado = false;
             controles.style.display = 'flex';
@@ -723,6 +863,7 @@
         }
 
         function escenaBeso() {
+            setEscenaCompanero('beso', 'beso');
             iniciarEscenaPixel('beso');
             typeWriter("Estoy enamorado de ti.", () => {
                 setTimeout(() => botonSeguir(sigPaso), 2000);
@@ -782,6 +923,7 @@
         });
 
         function faseCohete(respuesta) {
+            setEscenaCompanero('cohete', 'pensar');
             limpiarEscena();
             let extra = respuesta === 'no' ? "¿Cómo que 'en serio'? Hagamos como que dijiste que sí... " : "";
             
@@ -796,6 +938,7 @@
         }
 
         function granPregunta() {
+            setEscenaCompanero('pregunta', 'cargar');
             limpiarEscena();
             textoConsola.style.fontSize = '32px';
             textoConsola.style.textAlign = 'center';
@@ -821,6 +964,7 @@
         }
 
         function exito() {
+            setEscenaCompanero('beso', 'beso');
             limpiarEscena();
             setEstadoMuneco('bailar');
             textoConsola.style.fontSize = '26px';
