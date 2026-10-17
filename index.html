@@ -119,6 +119,17 @@
             100% { transform: translateY(-80px) translateX(var(--random-x, 0px)) scale(1.2); opacity: 0; }
         }
 
+        /* --- HISTORIA: FOTOS Y ESCENA PIXEL --- */
+        #galeria { width: 100%; display: none; flex-direction: column; align-items: center; gap: 4px; }
+        #galeria img { max-width: 100%; max-height: 30vh; border: 2px solid #4af626; box-shadow: 0 0 10px #4af626; object-fit: contain; }
+        #galeria .hint { font-size: 15px; opacity: 0.7; }
+        .grid-momentos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; width: 100%; }
+        .grid-momentos img { width: 100%; height: 14vh; object-fit: cover; opacity: 0.55; cursor: pointer; }
+        .grid-momentos img.fav { opacity: 1; border-color: #ff3333; box-shadow: 0 0 10px #ff3333; }
+        #canvas-pixel { display: none; width: 100%; max-width: 420px; image-rendering: pixelated; border: 2px solid #4af626; background: #000; }
+        #controles { display: none; gap: 10px; width: 100%; justify-content: center; }
+        #controles button { width: 40%; user-select: none; touch-action: none; }
+
         /* TEXTOS Y BOTONES - Centrados */
         #texto-consola {
             font-size: 23px; line-height: 1.25; 
@@ -174,6 +185,13 @@
 
         <!-- ESCENAS ASCII (Carro, cohete, etc) -->
         <div id="escena-ascii"></div>
+
+        <div id="galeria"></div>
+        <canvas id="canvas-pixel" width="320" height="150"></canvas>
+        <div id="controles">
+            <button id="btn-izq">◀</button>
+            <button id="btn-der">▶</button>
+        </div>
 
         <!-- TEXTO Y BOTONES -->
         <div id="texto-consola" style="display: none;"></div>
@@ -246,6 +264,7 @@
             botonesDinamicos.style.display = 'none';
             escenaAscii.innerHTML = '';
             escenaAscii.style.display = 'none';
+            limpiarHistoria();
         }
 
         function arrancarSistema() {
@@ -317,11 +336,284 @@
             limpiarEscena();
             typeWriter("Exacto. Con todo esto aclarado... Sabes que lo más probable es que estoy perdidamente enamorado tuyo, ¿verdad?", () => {
                 botonesDinamicos.innerHTML = `
-                    <button onclick="faseCohete('si')">> Sí, lo sé <</button>
-                    <button onclick="faseCohete('no')">> ¿En serio? <</button>`;
+                    <button onclick="iniciarHistoria('si')">> Sí, lo sé <</button>
+                    <button onclick="iniciarHistoria('no')">> ¿En serio? <</button>`;
                 botonesDinamicos.style.display = 'flex';
             });
         }
+
+        // ================= HISTORIA INTERACTIVA =================
+        const FOTO_CARACAS = 'foto favorita.jpg';
+        const FOTO_OFICINA = 'Oficina.jpg';
+        const FOTOS_MOMENTOS = [1, 2, 3, 4, 5].map(n => `Momentos (${n}).jpg`);
+        const FOTOS_TELEFONO = ['te quedaste con mi telefono.jpg']
+            .concat([1, 2, 3, 4, 5].map(n => `te quedaste con mi telefono (${n}).jpg`));
+
+        const galeria = document.getElementById('galeria');
+        const canvas = document.getElementById('canvas-pixel');
+        const ctx = canvas.getContext('2d');
+        const controles = document.getElementById('controles');
+
+        const pasos = [];
+        let pasoIdx = 0;
+        let respuestaHistoria = 'si';
+        let rafId = null;
+        const S = { escena: '', x: 20, dir: 0, sentado: false, t: 0, corazones: [] };
+
+        function sigPaso() { pasos[pasoIdx++](); }
+
+        function botonSeguir(fn, etiqueta = '> Seguir <') {
+            botonesDinamicos.innerHTML = `<button id="btn-seguir">${etiqueta}</button>`;
+            document.getElementById('btn-seguir').onclick = fn;
+            botonesDinamicos.style.display = 'flex';
+        }
+
+        function limpiarHistoria() {
+            cancelAnimationFrame(rafId);
+            rafId = null;
+            galeria.style.display = 'none';
+            galeria.innerHTML = '';
+            canvas.style.display = 'none';
+            controles.style.display = 'none';
+            S.dir = 0;
+        }
+
+        function mostrarFotos(fotos) {
+            if (!fotos.length) return;
+            let i = 0;
+            galeria.innerHTML = `<img src="${encodeURI(fotos[0])}" alt="">` +
+                (fotos.length > 1 ? '<div class="hint">(toca la foto para ver la siguiente)</div>' : '');
+            galeria.style.display = 'flex';
+            if (fotos.length > 1) {
+                const img = galeria.querySelector('img');
+                img.onclick = () => { i = (i + 1) % fotos.length; img.src = encodeURI(fotos[i]); };
+            }
+        }
+
+        function capitulo(texto, fotos = []) {
+            return () => {
+                limpiarEscena();
+                mostrarFotos(fotos);
+                typeWriter(texto, () => botonSeguir(sigPaso));
+            };
+        }
+
+        function pasoMomentos() {
+            limpiarEscena();
+            galeria.innerHTML = '<div class="grid-momentos">' +
+                FOTOS_MOMENTOS.map(f => `<img src="${encodeURI(f)}" alt="">`).join('') + '</div>';
+            galeria.style.display = 'flex';
+            galeria.querySelectorAll('img').forEach(img => {
+                img.onclick = () => img.classList.toggle('fav');
+            });
+            typeWriter("Estos son nuestros momentos. Toca las fotos que más te gusten de nosotros.", () => botonSeguir(sigPaso));
+        }
+
+        function pasoJuegos() {
+            limpiarEscena();
+            typeWriter("Los juegos de niño en la cascada, las risas... Elige un juego y mira quién gana:", () => {
+                const resultados = {
+                    a: "Piedra, papel o tijera: empate técnico. Nadie quiere perder.",
+                    b: "Carrera hasta la cascada: ganó el que menos corrió. Nadie.",
+                    c: "Mortal Kombat: FLAWLESS VICTORY para ti. Curiosamente, es lo único en lo que me ganas."
+                };
+                botonesDinamicos.innerHTML = `
+                    <button data-j="a">> Piedra, papel o tijera <</button>
+                    <button data-j="b">> Carrera <</button>
+                    <button data-j="c">> Mortal Kombat <</button>`;
+                botonesDinamicos.style.display = 'flex';
+                botonesDinamicos.querySelectorAll('button').forEach(b => {
+                    b.onclick = () => {
+                        textoConsola.innerHTML = resultados[b.dataset.j];
+                        if (b.dataset.j === 'c') botonSeguir(sigPaso);
+                    };
+                });
+            });
+        }
+
+        // ---------- Escena pixel art ----------
+        const SUELO = 130;
+        const BANCO_X = 210;
+
+        function rect(c, x, y, w, h) { ctx.fillStyle = c; ctx.fillRect(Math.round(x), Math.round(y), w, h); }
+
+        function persona(x, y, pose, opts = {}) {
+            const piel = '#f2c38f';
+            const pelo = opts.pelo || '#3b2a1a';
+            const ropa = opts.ropa || '#e03c3c';
+            const pantalon = opts.pantalon || '#2a3cb0';
+            const f = Math.floor(S.t / 8) % 2;
+            if (pose === 'sentado') {
+                rect(pantalon, x + 2, y - 10, 14, 5);
+                rect(pantalon, x + 13, y - 5, 4, 5);
+            } else if (pose === 'camina') {
+                rect(pantalon, x + 1, y - (f ? 6 : 10), 5, f ? 6 : 10);
+                rect(pantalon, x + 8, y - (f ? 10 : 6), 5, f ? 10 : 6);
+            } else {
+                rect(pantalon, x + 1, y - 10, 5, 10);
+                rect(pantalon, x + 8, y - 10, 5, 10);
+            }
+            rect(ropa, x, y - 22, 14, 12);
+            rect(piel, x + 1, y - 32, 12, 10);
+            rect(pelo, x + 1, y - 32, 12, 3);
+            if (opts.largo) { rect(pelo, x, y - 32, 2, 16); rect(pelo, x + 12, y - 32, 2, 16); }
+            rect('#000', x + (opts.mira === -1 ? 3 : 8), y - 27, 2, 2);
+        }
+
+        function banco(y) {
+            rect('#7a4b1e', BANCO_X, y - 24, 56, 3);
+            rect('#7a4b1e', BANCO_X, y - 7, 56, 4);
+            rect('#4d2f12', BANCO_X + 4, y - 3, 3, 3);
+            rect('#4d2f12', BANCO_X + 49, y - 3, 3, 3);
+            rect('#4d2f12', BANCO_X + 1, y - 24, 3, 17);
+        }
+
+        function cielo(colores) {
+            const h = SUELO / colores.length;
+            colores.forEach((c, i) => rect(c, 0, i * h, 320, Math.ceil(h)));
+        }
+
+        function dibujar() {
+            S.t++;
+            if (S.escena === 'banco' && !S.sentado) {
+                S.x = Math.max(5, S.x + S.dir * 1.6);
+                if (S.x >= BANCO_X - 4) {
+                    S.sentado = true;
+                    S.x = BANCO_X + 10;
+                    escenaBancoSentado();
+                }
+            }
+
+            if (S.escena === 'banco') {
+                cielo(['#0a1a3a', '#12285a', '#1c3b7a']);
+                rect('#1f5a1f', 0, SUELO, 320, 20);
+                banco(SUELO);
+                persona(S.x, SUELO, S.sentado ? 'sentado' : (S.dir ? 'camina' : 'parado'));
+            } else if (S.escena === 'escritorio') {
+                rect('#1a1a2a', 0, 0, 320, SUELO);
+                rect('#3a2a1a', 0, SUELO, 320, 20);
+                rect('#8a5a2a', 150, SUELO - 24, 130, 4);
+                rect('#5a3a1a', 156, SUELO - 20, 4, 20);
+                rect('#5a3a1a', 270, SUELO - 20, 4, 20);
+                rect('#111', 195, SUELO - 54, 40, 28);
+                rect(S.t % 60 < 30 ? '#4af626' : '#1a8a10', 199, SUELO - 50, 32, 20);
+                rect('#333', 211, SUELO - 26, 8, 2);
+                rect('#555', 128, SUELO - 8, 20, 3);
+                persona(130, SUELO, 'sentado');
+            } else if (S.escena === 'atardecer' || S.escena === 'beso') {
+                cielo(['#2b1a4a', '#7a2a6a', '#d0475a', '#ff8a3a', '#ffc04a']);
+                ctx.fillStyle = '#ffe28a';
+                ctx.beginPath(); ctx.arc(80, SUELO, 38, Math.PI, 0); ctx.fill();
+                rect('#1a2a10', 0, SUELO, 320, 20);
+                if (S.escena === 'atardecer') {
+                    banco(SUELO);
+                    persona(BANCO_X + 10, SUELO, 'sentado');
+                } else {
+                    persona(130, SUELO, 'parado');
+                    persona(143, SUELO, 'parado', { pelo: '#7a3b1a', ropa: '#ff6fa8', pantalon: '#ff6fa8', largo: true, mira: -1 });
+                    if (S.t % 14 === 0) {
+                        S.corazones.push({ x: 140 + Math.random() * 20, y: SUELO - 40, v: 0.5 + Math.random() * 0.5, dx: Math.random() * 2 - 1 });
+                    }
+                    ctx.font = '16px monospace';
+                    S.corazones = S.corazones.filter(h => h.y > 0);
+                    S.corazones.forEach(h => {
+                        h.y -= h.v; h.x += Math.sin(h.y / 10) * 0.5;
+                        ctx.fillStyle = '#ff3333';
+                        ctx.fillText('♥', h.x, h.y);
+                    });
+                }
+            }
+            rafId = requestAnimationFrame(dibujar);
+        }
+
+        function iniciarEscenaPixel(nombre) {
+            limpiarEscena();
+            canvas.style.display = 'block';
+            S.escena = nombre;
+            S.t = 0;
+            S.corazones = [];
+            rafId = requestAnimationFrame(dibujar);
+        }
+
+        function dialogo(partes, i, fin) {
+            botonesDinamicos.style.display = 'none';
+            typeWriter(partes[i], () => {
+                // Pausa de 2 segundos antes de mostrar el botón
+                setTimeout(() => {
+                    botonSeguir(() => (i + 1 < partes.length ? dialogo(partes, i + 1, fin) : fin()));
+                }, 2000);
+            });
+        }
+
+        function pasoBanco() {
+            iniciarEscenaPixel('banco');
+            S.x = 20; S.sentado = false;
+            controles.style.display = 'flex';
+            textoConsola.style.display = 'block';
+            textoConsola.innerHTML = "Mueve al muñeco con las flechas hasta el banco.";
+        }
+
+        function escenaBancoSentado() {
+            controles.style.display = 'none';
+            S.dir = 0;
+            dialogo(["Oye Sydney, estos han sido los 2 meses más raros de mi vida, no sé cómo sentirme."], 0, escenaEscritorio);
+        }
+
+        function escenaEscritorio() {
+            iniciarEscenaPixel('escritorio');
+            dialogo(["A veces trato de poder trabajar, estudiar o hacer algo, pero no puedo dejar de pensar en ti... no sé qué me hiciste."], 0, escenaAtardecer);
+        }
+
+        function escenaAtardecer() {
+            iniciarEscenaPixel('atardecer');
+            dialogo([
+                "A veces trato simplemente de despejar mi mente y estás ahí. No sé qué me hiciste o cómo, a veces siento que nunca te tendré, o pienso que de seguro sería mejor para mí estar un tiempo sin ti...",
+                "Pero recuerdo que estoy enamorado de ti. Lo pienso, lo analizo y no sé cómo alguien tan solitario como yo pudo caer. No sé si son tus ojos, tu cabello, tu humor o cómo me tratas cuando estoy contigo.",
+                "Voy un mes sin verte y me siento fatal. No me gusta la pared que pones entre tú y yo. Lo curioso es que siento que más quiero estar contigo: soy un ser solitario que ama estar solo, pero odio que tú no estés.",
+                "Siempre pienso que algo hice, o que algo de mí es lo que hace que pase, pero tú aseguras que no, que sí te importo, aunque siento que no haces el esfuerzo de quererme.",
+                "Pero pase lo que pase, yo quiero estar presente cuando tengas el tiempo, aunque no niego que tengo miedo de que lo que espero me hiera. No sé si duele más un corazón roto o ver a tus padres muertos.",
+                "No sé. Ahorita solo te tengo a ti en mi cabeza. Estoy enamorado de ti."
+            ], 0, escenaBeso);
+        }
+
+        function escenaBeso() {
+            iniciarEscenaPixel('beso');
+            typeWriter("Estoy enamorado de ti. Y quiero seguir creando recuerdos contigo, paso a paso.", () => {
+                setTimeout(() => botonSeguir(sigPaso), 2000);
+            });
+        }
+
+        function iniciarHistoria(respuesta) {
+            respuestaHistoria = respuesta;
+            pasoIdx = 0;
+            pasos.length = 0;
+            semaforoBox.style.display = 'none';
+            pasos.push(
+                capitulo("Ya llevamos 2 meses, sin contar ese mes de dudas. Y aun así, aquí estamos... escribiendo nuestra historia."),
+                capitulo("Ese momento en Caracas, esa foto de nuestras piernas... nunca imaginé enamorarme de alguien tan igual y tan diferente a mí.", [FOTO_CARACAS]),
+                capitulo("El 13 de octubre de 2026 te invité a mi casa para ver el lanzamiento de Artemis II. Ese día sentí que compartir cosas contigo me hace feliz de verdad."),
+                capitulo("Y lo de la oficina... ahí hubo una chispa especial. Contigo todo se siente distinto, intenso y bonito.", [FOTO_OFICINA]),
+                pasoJuegos,
+                capitulo("Hubo un día loco: dejé el carro, el carro de tu mami y mi teléfono. Me dio miedo porque sabías mi clave, pero me enamoró más que respetaras no revisarlo.", FOTOS_TELEFONO),
+                pasoMomentos,
+                pasoBanco,
+                () => { semaforoBox.style.display = 'inline-block'; faseCohete(respuestaHistoria); }
+            );
+            sigPaso();
+        }
+
+        window.addEventListener('keydown', e => {
+            if (e.key === 'ArrowRight') S.dir = 1;
+            if (e.key === 'ArrowLeft') S.dir = -1;
+        });
+        window.addEventListener('keyup', e => {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') S.dir = 0;
+        });
+        [['btn-izq', -1], ['btn-der', 1]].forEach(([id, d]) => {
+            const b = document.getElementById(id);
+            b.addEventListener('pointerdown', () => { S.dir = d; });
+            ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, () => { S.dir = 0; }));
+        });
 
         function faseCohete(respuesta) {
             limpiarEscena();
@@ -331,7 +623,7 @@
             escenaAscii.style.height = '120px';
             escenaAscii.innerHTML = `<div class="cohete-anim">   /\\\n  (  )\n  (  )\n /|/\\|\\\n /_||_\\</div>`;
 
-            typeWriter(extra + "Sé que solo me falta ser valiente y preguntarte algo. Sé que el 'sí' puede que ya esté, pero verdaderamente me da pavor. Me pediste tiempo, pero un paso importante creo que ya nos lo saltamos... ¿Quieres seguir?", () => {
+            typeWriter(extra + "Ya llevamos 2 meses de novios y aun así me sigue dando nervios preguntarte esto. Quiero que lo nuestro siga creciendo, a tu ritmo y con mucha paciencia... ¿Quieres seguir?", () => {
                 botonesDinamicos.innerHTML = `<button onclick="granPregunta()">> Iniciar secuencia final <</button>`;
                 botonesDinamicos.style.display = 'flex';
             });
@@ -343,7 +635,7 @@
             textoConsola.style.textAlign = 'center';
             textoConsola.style.textShadow = '0 0 10px #4af626';
 
-            typeWriter("Sydney Linda... ¿Quieres ser mi novia?", () => {
+            typeWriter("Sydney Linda... ¿Quieres seguir siendo mi novia?", () => {
                 botonesDinamicos.innerHTML = `
                     <button onclick="exito()" style="width: 80%; font-size: 28px; padding: 12px; margin-bottom: 5px;">> ¡SÍ! <3 <</button>
                     <button id="btn-no-final" ontouchstart="escaparBoton()" onmouseover="escaparBoton()" style="width: 50%;">> No <</button>`;
