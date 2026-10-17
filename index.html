@@ -977,10 +977,12 @@
         function saltar() {
             if (!['banco', 'coleccion'].includes(S.escena) || S.sentado || !S.suelo) return;
             S.suelo = false;
-            S.vy = -4.2;
+            S.vy = -7.2;
             sonidoRetro(520, 0.13, 'square');
         }
-        document.getElementById('btn-salto').addEventListener('pointerdown', saltar);
+        const btnSalto = document.getElementById('btn-salto');
+        btnSalto.addEventListener('pointerdown', event => { event.preventDefault(); saltar(); });
+        btnSalto.addEventListener('click', saltar);
         document.getElementById('btn-sonido').addEventListener('click', event => {
             efectosActivos = !efectosActivos;
             event.currentTarget.textContent = efectosActivos ? '♪' : '×';
