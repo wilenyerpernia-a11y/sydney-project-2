@@ -131,8 +131,8 @@
         .moment-card span { position: absolute; right: 5px; bottom: 4px; color: white; font: 18px 'VT323', monospace; text-shadow: 0 0 5px #ff334e; }
         .moment-card.fav span { font-size: 14px; }
         #canvas-pixel { display: none; width: 100%; max-width: 520px; aspect-ratio: 32 / 15; height: auto; image-rendering: pixelated; border: 2px solid #4af626; background: #000; box-shadow: 0 0 20px rgba(74, 246, 38, 0.28); }
-        #controles { display: none; gap: 10px; width: 100%; justify-content: center; }
-        #controles button { width: 24%; min-height: 44px; user-select: none; touch-action: none; }
+        #controles { display: none; gap: 6px; width: 100%; justify-content: center; }
+        #controles button { flex: 1; width: auto; min-width: 0; min-height: 44px; user-select: none; touch-action: none; }
         #controles button[data-salto] { color: #ffc857; border-color: #ffc857; text-shadow: 0 0 6px #ffc857; }
         .pixel-hint { margin: 0; font-size: 16px; color: #b7ffae; text-shadow: 0 0 6px #4af626; }
 
@@ -196,7 +196,7 @@
         <canvas id="canvas-pixel" width="320" height="150"></canvas>
         <div id="controles">
             <button id="btn-izq">◀</button>
-            <button id="btn-salto" data-salto>⤒ SALTAR</button>
+            <button id="btn-salto" data-salto aria-label="Saltar" title="Saltar">↑</button>
             <button id="btn-der">▶</button>
             <button id="btn-sonido" aria-label="Silenciar efectos">♪</button>
         </div>
@@ -328,7 +328,14 @@
         let pasoIdx = 0;
         let respuestaHistoria = 'si';
         let rafId = null;
-        const S = { escena: '', x: 20, dir: 0, sentado: false, t: 0, corazones: [], y: 0, vy: 0, suelo: true, ultimoPaso: 0 };
+        const S = { escena: '', x: 20, dir: 0, sentado: false, t: 0, corazones: [], y: 0, vy: 0, suelo: true, ultimoPaso: 0, stage: 0, frase: 0, objetoX: 270, fraseTomada: false };
+        const RECUERDOS = [
+            { fondo: 'escritorio', titulo: 'El escritorio', frases: ['Dos meses raros y bonitos.', 'Trabajo, estudio... y pienso en ti.'] },
+            { fondo: 'parque', titulo: 'Un respiro', frases: ['Intento despejar mi mente.', 'Y ahí estás. ¿Qué me hiciste?', 'A veces pienso en darte tiempo.'] },
+            { fondo: 'noche', titulo: 'Pensamientos de noche', frases: ['Pero estoy enamorado de ti.', '¿Cómo caí yo, tan solitario?', 'Tus ojos, tu cabello y tu humor.'] },
+            { fondo: 'atardecer', titulo: 'Un mes sin verte', frases: ['Me encanta cómo me tratas.', 'Un mes sin verte pesa.', 'Odio la distancia. Quiero estar contigo.'] },
+            { fondo: 'camino', titulo: 'Lo que siento', frases: ['A veces creo que hice algo mal.', 'Tú me aseguras que sí te importo.', 'Quiero estar cuando tengas tiempo.', 'Da vértigo sentir tanto.', 'Lo tengo claro: estoy enamorado de ti.'] }
+        ];
         let sintetizador;
         let efectosActivos = true;
 
@@ -481,9 +488,82 @@
             colores.forEach((c, i) => rect(c, 0, i * h, 320, Math.ceil(h)));
         }
 
+        function fondoRecuerdo(tipo) {
+            if (tipo === 'escritorio') {
+                rect('#13182b', 0, 0, 320, SUELO);
+                rect('#273653', 16, 22, 74, 55);
+                rect('#92c9e8', 20, 26, 66, 47);
+                rect('#39405a', 50, 22, 4, 55);
+                rect('#39405a', 16, 46, 74, 4);
+                for (let i = 0; i < 6; i++) rect('#222e48', i * 48, 75 + (i % 2) * 8, 40, 42);
+                rect('#49372b', 0, SUELO, 320, 20);
+            } else if (tipo === 'parque') {
+                cielo(['#4c98bf', '#81bdc6', '#a6d59b']);
+                rect('#40774a', 0, SUELO - 12, 320, 32);
+                for (let x = 24; x < 320; x += 92) {
+                    rect('#684b35', x + 12, 70, 8, 54);
+                    rect('#24744b', x, 46, 32, 34);
+                    rect('#338d53', x - 8, 58, 48, 24);
+                }
+                rect('#c8ad69', 0, SUELO + 6, 320, 5);
+            } else if (tipo === 'noche') {
+                cielo(['#10132f', '#1b2050', '#2b3263']);
+                for (let i = 0; i < 22; i++) rect(i % 3 ? '#f5e9a0' : '#fff', (i * 67 + 19) % 320, (i * 31 + 8) % 78, 2, 2);
+                for (let x = 0; x < 320; x += 34) {
+                    rect('#252743', x, 78 + (x % 3) * 5, 28, SUELO - 78 - (x % 3) * 5);
+                    rect('#f3c66a', x + 7, 88, 3, 4);
+                    rect('#f3c66a', x + 18, 101, 3, 4);
+                }
+                rect('#39354e', 0, SUELO, 320, 20);
+            } else if (tipo === 'atardecer') {
+                cielo(['#39295e', '#8d4d79', '#dd7866', '#f4a55d']);
+                ctx.fillStyle = '#ffe7a0';
+                ctx.beginPath(); ctx.arc(238, 89, 25, 0, Math.PI * 2); ctx.fill();
+                rect('#5d4665', 0, 108, 320, 22);
+                rect('#31533d', 0, SUELO, 320, 20);
+            } else {
+                cielo(['#272349', '#60446c', '#cb726b', '#edaa65']);
+                for (let x = 0; x < 320; x += 42) rect('#344b3a', x, 100 - (x % 3) * 5, 30, 35);
+                rect('#866142', 0, SUELO, 320, 20);
+                rect('#d7aa70', 0, SUELO, 320, 2);
+            }
+        }
+
+        function dibujarObjetoRecuerdo() {
+            if (S.fraseTomada) return;
+            const pulso = 1 + Math.sin(S.t / 8) * 0.16;
+            const cx = S.objetoX + 7;
+            const cy = SUELO - 36;
+            const tonos = ['#75f4ff', '#ffe176', '#ff80bc', '#b7a1ff', '#ff8d62'];
+            ctx.save();
+            ctx.globalAlpha = 0.3 + Math.sin(S.t / 8) * 0.1;
+            ctx.fillStyle = tonos[S.stage % tonos.length];
+            ctx.beginPath(); ctx.arc(cx, cy, 18 * pulso, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+            ctx.fillStyle = tonos[S.stage % tonos.length];
+            ctx.shadowColor = tonos[S.stage % tonos.length];
+            ctx.shadowBlur = 12;
+            ctx.font = '22px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText(['▣', '✦', '♥', '♫', '✉'][S.frase % 5], cx, cy + 7);
+            ctx.shadowBlur = 0;
+            ctx.textAlign = 'start';
+        }
+
+        function tomarFraseRecuerdo() {
+            if (S.fraseTomada) return;
+            S.fraseTomada = true;
+            S.dir = 0;
+            controles.style.display = 'none';
+            sonidoRetro(990, 0.18, 'triangle');
+            typeWriter(RECUERDOS[S.stage].frases[S.frase], () => {
+                setTimeout(() => botonSeguir(avanzarRecuerdo), 1400);
+            });
+        }
+
         function dibujar() {
             S.t++;
-            if (S.escena === 'banco' && !S.sentado) {
+            if ((S.escena === 'banco' && !S.sentado) || S.escena === 'coleccion') {
                 S.x = Math.max(5, Math.min(298, S.x + S.dir * 1.8));
                 if (S.dir && S.t - S.ultimoPaso > 11) {
                     sonidoRetro(160 + Math.random() * 35, 0.045, 'triangle');
@@ -497,12 +577,13 @@
                         sonidoRetro(230, 0.1, 'triangle');
                     }
                 }
-                if (S.x >= BANCO_X - 7 && S.suelo) {
+                if (S.escena === 'banco' && S.x >= BANCO_X - 7 && S.suelo) {
                     S.sentado = true;
                     S.x = BANCO_X + 10;
                     sonidoRetro(880, 0.14, 'triangle');
                     escenaBancoSentado();
                 }
+                if (S.escena === 'coleccion' && S.x >= S.objetoX - 8 && S.suelo) tomarFraseRecuerdo();
             }
 
             if (S.escena === 'banco') {
@@ -518,6 +599,10 @@
                 rect('#75a94b', 0, SUELO, 320, 2);
                 banco(SUELO);
                 persona(S.x, SUELO + S.y, S.sentado ? 'sentado' : (!S.suelo || S.dir ? 'camina' : 'parado'));
+            } else if (S.escena === 'coleccion') {
+                fondoRecuerdo(RECUERDOS[S.stage].fondo);
+                dibujarObjetoRecuerdo();
+                persona(S.x, SUELO + S.y, !S.suelo || S.dir ? 'camina' : 'parado');
             } else if (S.escena === 'escritorio') {
                 rect('#1a1a2a', 0, 0, 320, SUELO);
                 for (let i = 0; i < 8; i++) {
@@ -574,6 +659,35 @@
             rafId = requestAnimationFrame(dibujar);
         }
 
+        function iniciarRecuerdo(stage) {
+            if (stage >= RECUERDOS.length) {
+                escenaBeso();
+                return;
+            }
+            iniciarEscenaPixel('coleccion');
+            S.stage = stage;
+            S.frase = 0;
+            S.x = 18;
+            S.objetoX = 268;
+            S.fraseTomada = false;
+            controles.style.display = 'flex';
+            textoConsola.style.display = 'block';
+            textoConsola.innerHTML = `${RECUERDOS[stage].titulo}: camina hasta el objeto brillante.`;
+        }
+
+        function avanzarRecuerdo() {
+            S.frase++;
+            if (S.frase >= RECUERDOS[S.stage].frases.length) {
+                iniciarRecuerdo(S.stage + 1);
+                return;
+            }
+            S.x = 18;
+            S.objetoX = 268;
+            S.fraseTomada = false;
+            controles.style.display = 'flex';
+            textoConsola.innerHTML = `${RECUERDOS[S.stage].titulo}: recoge el siguiente recuerdo.`;
+        }
+
         function dialogo(partes, i, fin) {
             botonesDinamicos.style.display = 'none';
             typeWriter(partes[i], () => {
@@ -595,26 +709,22 @@
         function escenaBancoSentado() {
             controles.style.display = 'none';
             S.dir = 0;
-            dialogo(["Oye Sydney, estos han sido los 2 meses más raros y bonitos de mi vida, no sé cómo sentirme. A veces trato de poder trabajar, estudiar o hacer algo, pero no puedo dejar de pensar en ti, no sé qué me hiciste..."], 0, escenaEscritorio);
+            typeWriter('Aquí empieza nuestro pequeño viaje.', () => {
+                setTimeout(() => botonSeguir(() => iniciarRecuerdo(0)), 1400);
+            });
         }
 
         function escenaEscritorio() {
-            iniciarEscenaPixel('escritorio');
-            dialogo(["A veces trato simplemente de despejar mi mente y estás ahí. No sé qué me hiciste o cómo... A veces pienso en darte un tiempo para calmar todo, pero recuerdo que estoy enamorado de ti. Lo pienso, lo analizo y no sé cómo alguien tan solitario como yo pudo caer. No sé si son tus ojos, tu cabello, tu humor o cómo me tratas cuando estoy contigo."], 0, escenaAtardecer);
+            iniciarRecuerdo(0);
         }
 
         function escenaAtardecer() {
-            iniciarEscenaPixel('atardecer');
-            dialogo([
-                "Voy a un mes sin verte y se siente pesado. No me gusta la distancia o la pared que a veces pones, porque lo único que quiero es estar contigo. Odio que no estés.",
-                "Siempre pienso que algo hice mal, pero tú me aseguras que no, que sí te importo. A pesar de todo, quiero estar presente cuando tengas el tiempo.",
-                "Sé que a veces da vértigo arriesgarse a sentir tanto, pero lo tengo clarísimo... Estoy enamorado de ti."
-            ], 0, escenaBeso);
+            iniciarRecuerdo(3);
         }
 
         function escenaBeso() {
             iniciarEscenaPixel('beso');
-            typeWriter("Estoy enamorado de ti. Y quiero seguir creando recuerdos contigo, paso a paso.", () => {
+            typeWriter("Estoy enamorado de ti.", () => {
                 setTimeout(() => botonSeguir(sigPaso), 2000);
             });
         }
@@ -641,7 +751,7 @@
         }
 
         window.addEventListener('keydown', e => {
-            if (canvas.style.display !== 'block') return;
+            if (canvas.style.display !== 'block' || S.fraseTomada) return;
             if (e.key === 'ArrowRight') S.dir = 1;
             if (e.key === 'ArrowLeft') S.dir = -1;
             if (['ArrowUp', ' ', 'w', 'W'].includes(e.key)) {
@@ -658,7 +768,7 @@
             ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, () => { S.dir = 0; }));
         });
         function saltar() {
-            if (S.escena !== 'banco' || S.sentado || !S.suelo) return;
+            if (!['banco', 'coleccion'].includes(S.escena) || S.sentado || !S.suelo) return;
             S.suelo = false;
             S.vy = -4.2;
             sonidoRetro(520, 0.13, 'square');
