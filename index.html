@@ -205,7 +205,7 @@
         <canvas id="canvas-pixel" width="320" height="150"></canvas>
         <div id="controles">
             <button id="btn-izq">◀</button>
-            <button id="btn-salto" data-salto aria-label="Saltar" title="Saltar">↑</button>
+            <button id="btn-salto" data-salto aria-label="Saltar" title="Saltar">SALTAR</button>
             <button id="btn-der">▶</button>
             <button id="btn-sonido" aria-label="Silenciar efectos">♪</button>
         </div>
@@ -390,7 +390,7 @@
                 if (i < texto.length) {
                     textoConsola.innerHTML += texto.charAt(i);
                     i++;
-                    setTimeout(escribir, 40);
+                    setTimeout(escribir, 65);
                 } else {
                     textoConsola.classList.remove('cursor');
                     setEstadoMuneco('pensar');
@@ -737,7 +737,7 @@
 
         function revisarObstaculos() {
             const golpe = S.obstaculos.find(obstaculo =>
-                S.x + 13 >= obstaculo.x && S.x <= obstaculo.x + obstaculo.w && S.y > -obstaculo.h
+                S.x + 13 >= obstaculo.x && S.x <= obstaculo.x + obstaculo.w && S.y > -(obstaculo.h - 5)
             );
             if (!golpe) return;
             S.x = Math.max(18, golpe.x - 24);
@@ -767,7 +767,7 @@
                     S.ultimoPaso = S.t;
                 }
                 if (!S.suelo) {
-                    S.vy += 0.22;
+                    S.vy += S.escena === 'coleccion' ? 0.32 : 0.38;
                     S.y += S.vy;
                     if (S.y >= 0) {
                         S.y = 0; S.vy = 0; S.suelo = true;
@@ -871,6 +871,7 @@
             S.stage = stage;
             S.frase = 0;
             S.x = 18;
+            S.sentado = false;
             S.objetoX = 268;
             S.fraseTomada = false;
             S.obstaculos = OBSTACULOS_RECUERDO[stage];
@@ -915,8 +916,8 @@
         function escenaBancoSentado() {
             controles.style.display = 'none';
             S.dir = 0;
-            typeWriter('Aquí empieza nuestro pequeño viaje.', () => {
-                setTimeout(() => botonSeguir(() => iniciarRecuerdo(0)), 1400);
+            typeWriter('¡Llegaste! Ahora comienza la aventura.', () => {
+                setTimeout(() => iniciarRecuerdo(0), 1000);
             });
         }
 
@@ -977,7 +978,7 @@
         function saltar() {
             if (!['banco', 'coleccion'].includes(S.escena) || S.sentado || !S.suelo) return;
             S.suelo = false;
-            S.vy = -7.2;
+            S.vy = S.escena === 'banco' ? -4.6 : -5.8;
             sonidoRetro(520, 0.13, 'square');
         }
         const btnSalto = document.getElementById('btn-salto');
